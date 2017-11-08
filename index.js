@@ -1,6 +1,23 @@
-let readlineSync = require('readline-sync');
-let moment = require('moment');
-let fastCsv = require('fast-csv');
+const readlineSync = require('readline-sync');
+const moment = require('moment');
+const fastCsv = require('fast-csv');
+const log4js = require('log4js');
+const fs = require('fs');
+
+log4js.configure({
+    appenders: {
+        file: { type: 'fileSync', filename: './logs/debug.log' }
+    },
+    categories: {
+        default: { appenders: ['file'], level: 'debug'}
+    }
+});
+
+const logger = log4js.getLogger('debug');
+logger.level = 'debug';
+
+
+
 
 class Transaction {
     constructor(date, from, to, narrative, amount) {
@@ -12,7 +29,7 @@ class Transaction {
     }
 
     display() {
-        console.log(`Transaction: ${this.Amount} transferred from ${this.From} to ${this.To} on ${this.Date.format('Do MMMM YYYY')} (${this.Narrative}).`);
+        console.log(`Transaction: ${this.Amount.toFixed(2)} transferred from ${this.From} to ${this.To} on ${this.Date.format('Do MMMM YYYY')} (${this.Narrative}).`);
     }
 }
 
@@ -27,21 +44,15 @@ class User {
     }
 }
 
-function parseTransactionsCSV(terminationFunction) {
-    let transactions = [];
-    fastCsv.fromPath('Transactions2014.csv', {headers: true})
-        .transform((entry) => {
-            return new Transaction(moment(entry.Date, 'DD-MM-YYYY'), entry.From, entry.To, entry.Narrative, parseFloat(entry.Amount));
-        })
-        .on('data', (transaction) => {
-           transactions.push(transaction);
-        })
-        .on('end', () => {
-            terminationFunction(transactions)
-        });
+
+
+function displayAllBalances(users) {
+    for (userId = 0; userId < users.length; ++userId) {
+        users[userId].display();
+    }
 }
 
-function evaluateBalance(transactions) {
+function evaluateBalances(transactions) {
     let users = [];
     for (transactionId = 0; transactionId < transactions.length; ++transactionId) {
         let transaction = transactions[transactionId];
@@ -59,13 +70,69 @@ function evaluateBalance(transactions) {
 
         fromUser.Balance -= transaction.Amount;
         toUser.Balance += transaction.Amount;
-
-        transaction.display();
     }
 
-    for (userId = 0; userId < users.length; ++userId) {
-        users[userId].display();
+    displayAllBalances(users);
+}
+
+function singleAccountTransactions(transactions, name) {
+    for (transactionId = 0; transactionId < transactions.length; ++transactionId) {
+        let transaction = transactions[transactionId];
+        if (transaction.From === name || transaction.To === name) {
+            transaction.display();
+        }
     }
 }
 
-parseTransactionsCSV(evaluateBalance);
+function commandLoop(transactions) {
+    while (true) {
+        let command = readlineSync.question('Enter a command (or type "help" to see a list of commands).\n>> ');
+        if (command === 'help') {
+            console.log('');
+            console.log('List All - outputs names of all users and balance due.');
+            console.log('List [Account] - outputs all transactions for an account.');
+        }
+        else if (command.substring(0, 5) === 'List ') {
+            if (command.substring(5) === 'All') {
+                // List All
+                evaluateBalances(transactions);
+            }
+            else {
+                // List [Account]
+                singleAccountTransactions(transactions, command.substring(5));
+            }
+        }
+        console.log('');
+    }
+}
+
+function initialize() {
+    logger.debug('But why?');
+
+    let transactions = [];
+
+    /*
+    fastCsv.fromPath('DodgyTransactions2015.csv', {headers: true})
+        .transform((entry) => {
+            return new Transaction(moment(entry.Date, 'DD-MM-YYYY'), entry.From, entry.To, entry.Narrative, parseFloat(entry.Amount));
+        })
+        .on('data', (transaction) => {
+            transactions.push(transaction);
+        })
+        .on('end', () => {
+            commandLoop(transactions);
+        });
+        */
+
+    fs.readFile('Transactions2013.json', (err, data) => {
+        let entries = JSON.parse(data);
+        for (entryId = 0; entryId < entries.length; ++entryId) {
+            let entry = entries[transactionId];
+            transactions.push(new Transaction(moment(entry.Date, 'YYYY-MM-DD')), entry.FromAccount, entry.ToAccount, entry.Narrative, parseFloat(entry.Amount));
+        }
+        console.log(info);
+    });
+}
+
+initialize();
+
