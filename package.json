@@ -12,6 +12,7 @@
     "fast-csv": "^2.4.1",
     "log4js": "^2.3.11",
     "moment": "^2.19.1",
-    "readline-sync": "^1.4.7"
+    "readline-sync": "^1.4.7",
+    "xml2js": "^0.4.19"
   }
 }

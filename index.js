@@ -2,7 +2,11 @@ const readlineSync = require('readline-sync');
 const moment = require('moment');
 const fastCsv = require('fast-csv');
 const log4js = require('log4js');
+const xml2js = require('xml2js');
 const fs = require('fs');
+
+const Transaction = require('./transaction');
+const User = require('./user');
 
 log4js.configure({
     appenders: {
@@ -19,42 +23,15 @@ logger.level = 'debug';
 
 
 
-class Transaction {
-    constructor(date, from, to, narrative, amount) {
-        this.Date = date;
-        this.From = from;
-        this.To = to;
-        this.Narrative = narrative;
-        this.Amount = amount;
-    }
-
-    display() {
-        console.log(`Transaction: ${this.Amount.toFixed(2)} transferred from ${this.From} to ${this.To} on ${this.Date.format('Do MMMM YYYY')} (${this.Narrative}).`);
-    }
-}
-
-class User {
-    constructor(name, balance) {
-        this.Name = name;
-        this.Balance = balance
-    }
-
-    display() {
-        console.log(`User: ${this.Name} has ${this.Balance.toFixed(2)}`);
-    }
-}
-
-
-
 function displayAllBalances(users) {
-    for (userId = 0; userId < users.length; ++userId) {
+    for (let userId = 0; userId < users.length; ++userId) {
         users[userId].display();
     }
 }
 
 function evaluateBalances(transactions) {
     let users = [];
-    for (transactionId = 0; transactionId < transactions.length; ++transactionId) {
+    for (let transactionId = 0; transactionId < transactions.length; ++transactionId) {
         let transaction = transactions[transactionId];
 
         let fromUser = users.find((user) => { return user.Name === transaction.From; });
@@ -76,7 +53,7 @@ function evaluateBalances(transactions) {
 }
 
 function singleAccountTransactions(transactions, name) {
-    for (transactionId = 0; transactionId < transactions.length; ++transactionId) {
+    for (let transactionId = 0; transactionId < transactions.length; ++transactionId) {
         let transaction = transactions[transactionId];
         if (transaction.From === name || transaction.To === name) {
             transaction.display();
@@ -102,6 +79,7 @@ function commandLoop(transactions) {
                 singleAccountTransactions(transactions, command.substring(5));
             }
         }
+        else if (command === '')
         console.log('');
     }
 }
@@ -124,13 +102,26 @@ function initialize() {
         });
         */
 
+    /*
     fs.readFile('Transactions2013.json', (err, data) => {
         let entries = JSON.parse(data);
         for (entryId = 0; entryId < entries.length; ++entryId) {
-            let entry = entries[transactionId];
-            transactions.push(new Transaction(moment(entry.Date, 'YYYY-MM-DD')), entry.FromAccount, entry.ToAccount, entry.Narrative, parseFloat(entry.Amount));
+            let entry = entries[entryId];
+            transactions.push(new Transaction(moment(entry.Date, 'YYYY-MM-DD'), entry.FromAccount, entry.ToAccount, entry.Narrative, parseFloat(entry.Amount)));
         }
-        console.log(info);
+        commandLoop(transactions);
+    });
+    */
+
+    fs.readFile('Transactions2012.xml', (err, data) => {
+       xml2js.parseString(data, (xmlerr, xmldata) => {
+           let entries = xmldata.TransactionList.SupportTransaction;
+           for (let entryId = 0; entryId < entries.length; ++entryId) {
+               let entry = entries[entryId];
+               transactions.push(new Transaction(moment((parseInt(entry.$.Date) - 25569) * 86400 * 1000), entry.Parties[0].From[0], entry.Parties[0].To[0], entry.Description[0], parseFloat(entry.Value[0])));
+           }
+           commandLoop(transactions);
+       });
     });
 }
 
