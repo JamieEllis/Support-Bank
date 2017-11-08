@@ -1,4 +1,8 @@
 let readlineSync = require('readline-sync');
+let moment = require('moment');
+let fastCsv = require('fast-csv');
+
+
 
 class Transaction {
     constructor(date, from, to, narrative, amount) {
@@ -12,7 +16,8 @@ class Transaction {
 
 function pullCSVTransactions() {
     // Reads CSV transaction data into an array of Transaction objects.
-    
+    let readStream = fastCsv.createReadStream('Transactions2014.csv');
+    csv.fromStream(readStream).on('data', (data) => {console.log(data);});
 }
 
-new Transaction(5, 5, 5, 5, 5);
+pullCSVTransactions();
