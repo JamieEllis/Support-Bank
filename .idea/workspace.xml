@@ -46,8 +46,8 @@
       <file leaf-file-name="TransactionFileParser.js" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/TransactionFileParser.js">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="377">
-              <caret line="42" column="13" lean-forward="true" selection-start-line="42" selection-start-column="13" selection-end-line="42" selection-end-column="13" />
+            <state relative-caret-position="105">
+              <caret line="71" column="19" lean-forward="true" selection-start-line="71" selection-start-column="19" selection-end-line="71" selection-end-column="19" />
               <folding />
             </state>
           </provider>
@@ -333,12 +333,12 @@
       <option name="presentableId" value="Default" />
       <updated>1510135249370</updated>
       <workItem from="1510135250697" duration="20718000" />
-      <workItem from="1510224185367" duration="16824000" />
+      <workItem from="1510224185367" duration="17217000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="37542000" />
+    <option name="totallyTimeSpent" value="37935000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="290" y="0" width="1637" height="1167" extended-state="0" />
@@ -451,8 +451,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/TransactionFileParser.js">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="377">
-          <caret line="42" column="13" lean-forward="true" selection-start-line="42" selection-start-column="13" selection-end-line="42" selection-end-column="13" />
+        <state relative-caret-position="105">
+          <caret line="71" column="19" lean-forward="true" selection-start-line="71" selection-start-column="19" selection-end-line="71" selection-end-column="19" />
           <folding />
         </state>
       </provider>

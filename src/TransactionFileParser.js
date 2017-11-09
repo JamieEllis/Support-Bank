@@ -53,16 +53,29 @@ class TransactionFileParser {
         // XML import via xml2js package.
         let parsedTransactions = [];
         fs.readFile(filename, (err, data) => {
-            xml2js.parseString(data, (xmlerr, xmldata) => {
-                let entries = xmldata.TransactionList.SupportTransaction;
-                for (let entryId = 0; entryId < entries.length; ++entryId) {
-                    let entry = entries[entryId];
-                    let newlyParsedTransaction = new Transaction(moment((parseInt(entry.$.Date) - 25569) * 86400 * 1000), entry.Parties[0].From[0], entry.Parties[0].To[0], entry.Description[0], parseFloat(entry.Value[0]));
-                    parsedTransactions.push(newlyParsedTransaction);
-                }
-                logger.info('Finished parsing XML transaction data.');
+            if (err === null) {
+                xml2js.parseString(data, (xmlerr, xmldata) => {
+                    if (xmlerr === null) {
+                        let entries = xmldata.TransactionList.SupportTransaction;
+                        for (let entryId = 0; entryId < entries.length; ++entryId) {
+                            let entry = entries[entryId];
+                            let newlyParsedTransaction = new Transaction(moment((parseInt(entry.$.Date) - 25569) * 86400 * 1000), entry.Parties[0].From[0], entry.Parties[0].To[0], entry.Description[0], parseFloat(entry.Value[0]));
+                            parsedTransactions.push(newlyParsedTransaction);
+                        }
+                        logger.info('Finished parsing XML transaction data.');
+                    }
+                    else {
+                        console.log(xmlerr.toString());
+                        logger.error(`Error parsing XML file: ${xmlerr.toString()}.`);
+                    }
+                    callback(parsedTransactions);
+                });
+            }
+            else {
+                console.log(err.toString());
+                logger.error(`Error opening XML file: ${err.toString()}.`);
                 callback(parsedTransactions);
-            });
+            }
         });
     }
 
