@@ -32,13 +32,19 @@ class TransactionFileParser {
         logger.info('Parsing transaction data from JSON file.');
         let parsedTransactions = [];
         fs.readFile(filename, (err, data) => {
-            let entries = JSON.parse(data);
-            for (let entryId = 0; entryId < entries.length; ++entryId) {
-                let entry = entries[entryId];
-                let newlyParsedTransaction = new Transaction(moment(entry.Date, 'YYYY-MM-DD'), entry.FromAccount, entry.ToAccount, entry.Narrative, parseFloat(entry.Amount));
-                parsedTransactions.push(newlyParsedTransaction);
+            if (err === null) {
+                let entries = JSON.parse(data);
+                for (let entryId = 0; entryId < entries.length; ++entryId) {
+                    let entry = entries[entryId];
+                    let newlyParsedTransaction = new Transaction(moment(entry.Date, 'YYYY-MM-DD'), entry.FromAccount, entry.ToAccount, entry.Narrative, parseFloat(entry.Amount));
+                    parsedTransactions.push(newlyParsedTransaction);
+                }
+                logger.info('Finished parsing JSON transaction data.');
             }
-            logger.info('Finished parsing JSON transaction data.');
+            else {
+                console.log(err.toString());
+                logger.error(`Error opening JSON file: ${err.toString()}.`);
+            }
             callback(parsedTransactions);
         });
     }
