@@ -62,7 +62,7 @@ function singleAccountTransactions(transactions, name) {
 }
 
 
-function helpCommand(transactions) {
+function helpCommand(callback, transactions) {
     logger.info('Displaying a list of available commands.');
 
     console.log('');
@@ -70,10 +70,11 @@ function helpCommand(transactions) {
     console.log('List [Account] - outputs all transactions for an account.');
     console.log('Import File [filename] - adds all transactions from a file to the program. Supports .csv, .json, and .xml.');
 
-    commandStep(transactions);
+    callback(transactions);
 }
 
-function listCommand(transactions, parameter) {
+
+function listCommand(callback, transactions, parameter) {
     if (parameter === 'All') {
         // List All
         logger.info('List All command recognized.');
@@ -86,36 +87,50 @@ function listCommand(transactions, parameter) {
 
         singleAccountTransactions(transactions, parameter);
     }
-    commandStep(transactions);
+
+    callback(transactions);
 }
 
-function importFileCommand(transactions, filename) {
+
+function registerTransaction(transactions, date, from, to, narrative, amount) {
+    let transaction = new Transaction(date, from, to, narrative, amount);
+    transactions.push(transaction);
+    logger.trace(
+        `Read transaction from ${transaction.From} to ${transaction.To} on ${transaction.Date.format('DD/MM/YYYY')} 
+        - amount ${transaction.Amount} for reason ${transaction.Narrative}.`
+    );
+}
+
+function importFileCommand(callback, transactions, filename) {
     // Cheeky regex
     let suffixRegex = /^[^\.]+\.(.+)/;
     let suffixRegexResult = suffixRegex.exec(filename);
     let suffix = suffixRegexResult[1];
+
+    logger.info(`File name ${filename} determined of type .${suffix}.`);
+
     if (suffix === 'csv') {
         // CSV import via fast-csv package.
+        logger.info('Reading in transaction data from CSV file.');
         fastCsv.fromPath(filename, {headers: true})
-            .transform((entry) => {
-                return new Transaction(moment(entry.Date, 'DD-MM-YYYY'), entry.From, entry.To, entry.Narrative, parseFloat(entry.Amount));
-            })
-            .on('data', (transaction) => {
-                transactions.push(transaction);
+            .on('data', (entry) => {
+                registerTransaction(transactions, moment(entry.Date, 'DD-MM-YYYY'), entry.From, entry.To, entry.Narrative, parseFloat(entry.Amount));
             })
             .on('end', () => {
-                commandStep(transactions);
+                logger.info('Finished reading in transaction data.');
+                callback(transactions);
             });
     }
     else if (suffix === 'json') {
         // JSON import via build-in JSON parsing.
+        logger.info('Reading in transaction data from JSON file.');
         fs.readFile(filename, (err, data) => {
             let entries = JSON.parse(data);
             for (let entryId = 0; entryId < entries.length; ++entryId) {
                 let entry = entries[entryId];
-                transactions.push(new Transaction(moment(entry.Date, 'YYYY-MM-DD'), entry.FromAccount, entry.ToAccount, entry.Narrative, parseFloat(entry.Amount)));
+                registerTransaction(transactions, moment(entry.Date, 'YYYY-MM-DD'), entry.FromAccount, entry.ToAccount, entry.Narrative, parseFloat(entry.Amount));
             }
-            commandStep(transactions);
+            callback(transactions);
         });
     }
     else if (suffix === 'xml') {
@@ -125,18 +140,22 @@ function importFileCommand(transactions, filename) {
                 let entries = xmldata.TransactionList.SupportTransaction;
                 for (let entryId = 0; entryId < entries.length; ++entryId) {
                     let entry = entries[entryId];
-                    transactions.push(new Transaction(moment((parseInt(entry.$.Date) - 25569) * 86400 * 1000), entry.Parties[0].From[0], entry.Parties[0].To[0], entry.Description[0], parseFloat(entry.Value[0])));
+                    registerTransaction(transactions, moment(entry.Date, 'YYYY-MM-DD'), entry.FromAccount, entry.ToAccount, entry.Narrative, parseFloat(entry.Amount));
+
+                    moment((parseInt(entry.$.Date) - 25569) * 86400 * 1000), entry.Parties[0].From[0], entry.Parties[0].To[0], entry.Description[0], parseFloat(entry.Value[0])
                 }
-                commandStep(transactions);
+                callback(transactions);
             });
         });
     }
     else {
         // Unrecognized file type.
+        logger.info(`Tried to import unsupported file format.`);
         console.log(`The file extension .${suffix} is an unsupported format.`);
-        commandStep(transactions);
+        callback(transactions);
     }
 }
+
 
 function commandStep(transactions) {
     logger.info('Requesting command from the user.');
@@ -145,32 +164,30 @@ function commandStep(transactions) {
 
     if (command === 'help') {
         logger.info('Help command recognized.');
-        helpCommand(transactions);
+        helpCommand(commandStep, transactions);
     }
     else if (command === 'quit') {
         logger.info('Quit command recognized.');
         logger.info('Terminating command loop.');
-        console.log('Goodbye forever. :(')
+        console.log('Goodbye forever. :(');
     }
     else if (command.substring(0, 5) === 'List ') {
         let parameter = command.substring(5);
         logger.info(`List command identified with parameter ${parameter}.`);
-        listCommand(transactions, parameter)
+        listCommand(commandStep, transactions, parameter);
     }
     else if (command.substring(0, 12) === 'Import File ') {
         // Import File [filename]
         let filename = command.substring(12);
         logger.info(`Import File command recognized, file name ${filename}.`);
-        importFileCommand(transactions, filename);
+        importFileCommand(commandStep, transactions, filename);
     }
     else {
         // Unrecognized command.
         logger.info('Command was not recognized.');
-        console.log($`Unrecognized command "${command}".`);
+        console.log(`Unrecognized command "${command}".`);
         commandStep(transactions);
     }
-
-    console.log('');
 }
 
 
