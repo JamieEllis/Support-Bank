@@ -90,7 +90,7 @@ class TransactionFileParser {
     }
 
     static parseTransactionsJSON(callback, filename) {
-        // JSON import via build-in JSON parsing.
+        // JSON import via built-in JSON parsing.
         logger.info('Parsing transaction data from JSON file.');
         let parsedTransactions = [];
         fs.readFile(filename, (err, data) => {
