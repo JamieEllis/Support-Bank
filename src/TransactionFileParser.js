@@ -11,9 +11,12 @@ const logger = log4js.getLogger('TransactionFileParser');
 logger.level = 'ALL';
 
 
+// Todo: make a transaction file writer.
+
 class TransactionFileParser {
     static parseTransactionsCSV(callback, filename) {
         // CSV import via fast-csv package.
+        // Todo: swap to a package that actually gives you good errors when it fails.
         logger.info('Parsing transaction data from CSV file.');
         let parsedTransactions = [];
         fastCsv.fromPath(filename, {headers: true})
@@ -80,8 +83,6 @@ class TransactionFileParser {
     }
 
     static parseTransactions(callback, filename) {
-        // Todo: see if file actually exists.
-
         logger.info(`Parsing file ${filename} for transactions.`);
 
         // Pass in a function to call once done parsing, taking a list of the parsed transactions as an argument.
