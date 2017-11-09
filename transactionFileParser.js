@@ -1,9 +1,13 @@
+const log4js = require('log4js');
 const moment = require('moment');
 const fastCsv = require('fast-csv');
 const xml2js = require('xml2js');
 const fs = require('fs');
 
 const Transaction = require('./transaction');
+
+const logger = log4js.getLogger('TransactionFileParser');
+logger.level = 'ALL';
 
 
 class TransactionFileParser {
