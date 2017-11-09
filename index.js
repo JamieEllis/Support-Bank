@@ -13,7 +13,7 @@ log4js.configure({
 });
 
 const logger = log4js.getLogger('Spongelog Debugpants');
-logger.level = 'DEBUG';
+logger.level = 'ALL';
 
 
 function commandStep(transactions) {

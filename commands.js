@@ -8,7 +8,7 @@ const Transaction = require('./transaction');
 const User = require('./user');
 
 const logger = log4js.getLogger('Spongelog Debugpants');
-logger.level = 'DEBUG';
+logger.level = 'ALL';
 
 
 function displayAllBalances(users) {
@@ -92,6 +92,51 @@ function registerTransaction(transactions, date, from, to, narrative, amount) {
 }
 
 
+function importTransactionsCSV(callback, transactions, filename) {
+    // CSV import via fast-csv package.
+    logger.info('Reading in transaction data from CSV file.');
+    fastCsv.fromPath(filename, {headers: true})
+        .on('data', (entry) => {
+            registerTransaction(transactions, moment(entry.Date, 'DD-MM-YYYY'), entry.From, entry.To, entry.Narrative, parseFloat(entry.Amount));
+        })
+        .on('end', () => {
+            logger.info('Finished reading in transaction data.');
+            callback(transactions);
+        });
+}
+
+
+function importTransactionsJSON(callback, transactions, filename) {
+    // JSON import via build-in JSON parsing.
+    logger.info('Reading in transaction data from JSON file.');
+    fs.readFile(filename, (err, data) => {
+        let entries = JSON.parse(data);
+        for (let entryId = 0; entryId < entries.length; ++entryId) {
+            let entry = entries[entryId];
+            registerTransaction(transactions, moment(entry.Date, 'YYYY-MM-DD'), entry.FromAccount, entry.ToAccount, entry.Narrative, parseFloat(entry.Amount));
+        }
+        callback(transactions);
+    });
+}
+
+
+function importTransactionsXML(callback, transactions, filename) {
+    // XML import via xml2js package.
+    fs.readFile(filename, (err, data) => {
+        xml2js.parseString(data, (xmlerr, xmldata) => {
+            let entries = xmldata.TransactionList.SupportTransaction;
+            for (let entryId = 0; entryId < entries.length; ++entryId) {
+                let entry = entries[entryId];
+                registerTransaction(transactions, moment(entry.Date, 'YYYY-MM-DD'), entry.FromAccount, entry.ToAccount, entry.Narrative, parseFloat(entry.Amount));
+
+                moment((parseInt(entry.$.Date) - 25569) * 86400 * 1000), entry.Parties[0].From[0], entry.Parties[0].To[0], entry.Description[0], parseFloat(entry.Value[0])
+            }
+            callback(transactions);
+        });
+    });
+}
+
+
 function importFileCommand(callback, transactions, filename) {
     // Cheeky regex
     let suffixRegex = /^[^\.]+\.(.+)/;
@@ -101,43 +146,13 @@ function importFileCommand(callback, transactions, filename) {
     logger.info(`File name ${filename} determined of type .${suffix}.`);
 
     if (suffix === 'csv') {
-        // CSV import via fast-csv package.
-        logger.info('Reading in transaction data from CSV file.');
-        fastCsv.fromPath(filename, {headers: true})
-            .on('data', (entry) => {
-                registerTransaction(transactions, moment(entry.Date, 'DD-MM-YYYY'), entry.From, entry.To, entry.Narrative, parseFloat(entry.Amount));
-            })
-            .on('end', () => {
-                logger.info('Finished reading in transaction data.');
-                callback(transactions);
-            });
+        importTransactionsCSV(callback, transactions, filename);
     }
     else if (suffix === 'json') {
-        // JSON import via build-in JSON parsing.
-        logger.info('Reading in transaction data from JSON file.');
-        fs.readFile(filename, (err, data) => {
-            let entries = JSON.parse(data);
-            for (let entryId = 0; entryId < entries.length; ++entryId) {
-                let entry = entries[entryId];
-                registerTransaction(transactions, moment(entry.Date, 'YYYY-MM-DD'), entry.FromAccount, entry.ToAccount, entry.Narrative, parseFloat(entry.Amount));
-            }
-            callback(transactions);
-        });
+        importTransactionsJSON(callback, transactions, filename);
     }
     else if (suffix === 'xml') {
-        // XML import via xml2js package.
-        fs.readFile(filename, (err, data) => {
-            xml2js.parseString(data, (xmlerr, xmldata) => {
-                let entries = xmldata.TransactionList.SupportTransaction;
-                for (let entryId = 0; entryId < entries.length; ++entryId) {
-                    let entry = entries[entryId];
-                    registerTransaction(transactions, moment(entry.Date, 'YYYY-MM-DD'), entry.FromAccount, entry.ToAccount, entry.Narrative, parseFloat(entry.Amount));
-
-                    moment((parseInt(entry.$.Date) - 25569) * 86400 * 1000), entry.Parties[0].From[0], entry.Parties[0].To[0], entry.Description[0], parseFloat(entry.Value[0])
-                }
-                callback(transactions);
-            });
-        });
+        importTransactionsXML(callback, transactions, filename);
     }
     else {
         // Unrecognized file type.
