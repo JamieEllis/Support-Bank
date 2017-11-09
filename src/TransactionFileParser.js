@@ -3,8 +3,9 @@ const moment = require('moment');
 const fastCsv = require('fast-csv');
 const xml2js = require('xml2js');
 const fs = require('fs');
+const path = require('path');
 
-const Transaction = require('./transaction');
+const Transaction = require('./Transaction');
 
 const logger = log4js.getLogger('TransactionFileParser');
 logger.level = 'ALL';
@@ -65,7 +66,7 @@ class TransactionFileParser {
         logger.info(`Parsing file ${filename} for transactions.`);
 
         // Pass in a function to call once done parsing, taking a list of the parsed transactions as an argument.
-        let suffixRegex = /^[^\.]+\.(.+)/;
+        let suffixRegex = /.([^\.]*)$/;
         let suffixRegexResult = suffixRegex.exec(filename);
         let suffix = suffixRegexResult[1];
 

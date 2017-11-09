@@ -1,7 +1,7 @@
 const readlineSync = require('readline-sync');
 const log4js = require('log4js');
 
-const BankDatabase = require('./bankDatabase');
+const BankDatabase = require('./BankDatabase');
 
 const { helpCommand, listCommand, importFileCommand } = require('./commands');
 

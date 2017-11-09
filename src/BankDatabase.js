@@ -1,6 +1,6 @@
 const log4js = require('log4js');
 
-const User = require('./user');
+const User = require('./User');
 
 const logger = log4js.getLogger('BankDatabase');
 logger.level = 'ALL';

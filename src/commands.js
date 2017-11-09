@@ -1,6 +1,6 @@
 const log4js = require('log4js');
 
-const TransactionFileParser = require('./transactionFileParser');
+const TransactionFileParser = require('./TransactionFileParser');
 
 const logger = log4js.getLogger('Commands');
 logger.level = 'ALL';
