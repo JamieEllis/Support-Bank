@@ -73,72 +73,120 @@ function registerTransaction(users, transactions, date, from, to, narrative, amo
 }
 
 
-function importTransactionsCSV(callback, users, transactions, filename) {
-    // CSV import via fast-csv package.
-    logger.info('Reading in transaction data from CSV file.');
-    fastCsv.fromPath(filename, {headers: true})
-        .on('data', (entry) => {
-            registerTransaction(users, transactions, moment(entry.Date, 'DD-MM-YYYY'), entry.From, entry.To, entry.Narrative, parseFloat(entry.Amount));
-        })
-        .on('end', () => {
-            logger.info('Finished reading in transaction data.');
-            callback(users, transactions);
-        });
-}
+class TransactionFileParser {
+    static parseTransactionsCSV(callback, filename) {
+        // CSV import via fast-csv package.
+        logger.info('Parsing transaction data from CSV file.');
+        let parsedTransactions = [];
+        fastCsv.fromPath(filename, {headers: true})
+            .on('data', (entry) => {
+                let newlyParsedTransaction = new Transaction(moment(entry.Date, 'DD-MM-YYYY'), entry.From, entry.To, entry.Narrative, parseFloat(entry.Amount));
+                parsedTransactions.push(newlyParsedTransaction);
+            })
+            .on('end', () => {
+                logger.info('Finished parsing CSV transaction data.');
+                callback(parsedTransactions);
+            });
+    }
 
-
-function importTransactionsJSON(callback, users, transactions, filename) {
-    // JSON import via build-in JSON parsing.
-    logger.info('Reading in transaction data from JSON file.');
-    fs.readFile(filename, (err, data) => {
-        let entries = JSON.parse(data);
-        for (let entryId = 0; entryId < entries.length; ++entryId) {
-            let entry = entries[entryId];
-            registerTransaction(users, transactions, moment(entry.Date, 'YYYY-MM-DD'), entry.FromAccount, entry.ToAccount, entry.Narrative, parseFloat(entry.Amount));
-        }
-        callback(users, transactions);
-    });
-}
-
-
-function importTransactionsXML(callback, users, transactions, filename) {
-    // XML import via xml2js package.
-    fs.readFile(filename, (err, data) => {
-        xml2js.parseString(data, (xmlerr, xmldata) => {
-            let entries = xmldata.TransactionList.SupportTransaction;
+    static parseTransactionsJSON(callback, filename) {
+        // JSON import via build-in JSON parsing.
+        logger.info('Parsing transaction data from JSON file.');
+        let parsedTransactions = [];
+        fs.readFile(filename, (err, data) => {
+            let entries = JSON.parse(data);
             for (let entryId = 0; entryId < entries.length; ++entryId) {
                 let entry = entries[entryId];
-                registerTransaction(users, transactions, moment((parseInt(entry.$.Date) - 25569) * 86400 * 1000), entry.Parties[0].From[0], entry.Parties[0].To[0], entry.Description[0], parseFloat(entry.Value[0]));
+                let newlyParsedTransaction = new Transaction(moment(entry.Date, 'YYYY-MM-DD'), entry.FromAccount, entry.ToAccount, entry.Narrative, parseFloat(entry.Amount));
+                parsedTransactions.push(newlyParsedTransaction);
             }
-            callback(users, transactions);
+            logger.info('Finished parsing JSON transaction data.');
+            callback(parsedTransactions);
         });
-    });
+    }
+
+    static parseTransactionsXML(callback, filename) {
+        // XML import via xml2js package.
+        let parsedTransactions = [];
+        fs.readFile(filename, (err, data) => {
+            xml2js.parseString(data, (xmlerr, xmldata) => {
+                let entries = xmldata.TransactionList.SupportTransaction;
+                for (let entryId = 0; entryId < entries.length; ++entryId) {
+                    let entry = entries[entryId];
+                    let newlyParsedTransaction = new Transaction(moment((parseInt(entry.$.Date) - 25569) * 86400 * 1000), entry.Parties[0].From[0], entry.Parties[0].To[0], entry.Description[0], parseFloat(entry.Value[0]));
+                    parsedTransactions.push(newlyParsedTransaction);
+                }
+                logger.info('Finished parsing XML transaction data.');
+                callback(parsedTransactions);
+            });
+        });
+    }
+
+    static parseTransactions(callback, filename) {
+        // Todo: see if file actually exists.
+
+        logger.info(`Parsing file ${filename} for transactions.`);
+
+        // Pass in a function to call once done parsing, taking a list of the parsed transactions as an argument.
+        let suffixRegex = /^[^\.]+\.(.+)/;
+        let suffixRegexResult = suffixRegex.exec(filename);
+        let suffix = suffixRegexResult[1];
+
+        logger.info(`File to parse determined suffix .${suffix}.`);
+
+        if (suffix === 'csv') {
+            this.parseTransactionsCSV(callback, filename);
+        }
+        else if (suffix === 'json') {
+            this.parseTransactionsJSON(callback, filename);
+        }
+        else if (suffix === 'xml') {
+            this.parseTransactionsXML(callback, filename);
+        }
+        else {
+            // Unrecognized file type.
+            logger.warn("Tried to import unsupported file format - no transactions parsed.");
+            console.log(`The file extension .${suffix} is an unsupported format. No transactions have been added.`);
+            callback([]);
+        }
+    }
+}
+
+function registerTransaction(users, transactions, newTransaction) {
+    // Todo: validation checking on new transaction.
+
+    transactions.push(newTransaction);
+
+    let fromUser = users.find((user) => { return user.Name === newTransaction.From; });
+    let toUser = users.find((user) => { return user.Name === newTransaction.To; });
+    if (fromUser === undefined) {
+        users.push(new User(newTransaction.From, 0));
+        fromUser = users[users.length - 1];
+    }
+    if (toUser === undefined) {
+        users.push(new User(newTransaction.To, 0));
+        toUser = users[users.length - 1];
+    }
+
+    fromUser.Balance -= newTransaction.Amount;
+    toUser.Balance += newTransaction.Amount;
+
+    logger.trace(
+        `Read transaction from ${newTransaction.From} to ${newTransaction.To} on ${newTransaction.Date.format('DD/MM/YYYY')} - amount ${newTransaction.Amount} for reason ${newTransaction.Narrative}.`
+    );
 }
 
 
 function importFileCommand(callback, users, transactions, filename) {
-    // Cheeky regex
-    let suffixRegex = /^[^\.]+\.(.+)/;
-    let suffixRegexResult = suffixRegex.exec(filename);
-    let suffix = suffixRegexResult[1];
-
-    logger.info(`File name ${filename} determined of type .${suffix}.`);
-
-    if (suffix === 'csv') {
-        importTransactionsCSV(callback, users, transactions, filename);
-    }
-    else if (suffix === 'json') {
-        importTransactionsJSON(callback, users, transactions, filename);
-    }
-    else if (suffix === 'xml') {
-        importTransactionsXML(callback, users, transactions, filename);
-    }
-    else {
-        // Unrecognized file type.
-        logger.info(`Tried to import unsupported file format.`);
-        console.log(`The file extension .${suffix} is an unsupported format.`);
-        callback(users, transactions);
-    }
+    TransactionFileParser.parseTransactions(
+        newTransactions => {
+            newTransactions.forEach(newTransaction => {
+                registerTransaction(users, transactions, newTransaction);
+            });
+            callback(users, transactions);
+        },
+        filename
+    );
 }
 
 
